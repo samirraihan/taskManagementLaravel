@@ -1,0 +1,75 @@
+version: "3.8"
+services:
+  #PHP Service
+  taskmgmtlaravel:
+    build:
+      args:
+        user: taskmgmtlaravel
+        uid: 1000
+      context: .
+      dockerfile: .docker/Dockerfile
+    image: taskmgmtlaravel
+    restart: unless-stopped
+    working_dir: /var/www/
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    volumes:
+      - ./:/var/www
+      - ./.docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - taskmgmtlaravel_network
+
+  #MySQL Service
+  taskmgmtlaravel_db:
+    image: mysql:8.0
+    container_name: taskmgmtlaravel_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - taskmgmtlaravel_mysql_data:/var/lib/mysql
+    networks:
+      - taskmgmtlaravel_network
+  #Nginx Service
+  taskmgmtlaravel_nginx:
+    image: nginx:alpine
+    container_name: taskmgmtlaravel_nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8050:80"
+    volumes:
+      - ./:/var/www
+      - ./.docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - taskmgmtlaravel_network
+  # phpmyadmin service
+  taskmgmtlaravel_phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: unless-stopped
+    container_name: taskmgmtlaravel_phpmyadmin
+    depends_on:
+      - taskmgmtlaravel_db
+    ports:
+      - "4050:80"
+    environment:
+      PMA_HOST: taskmgmtlaravel_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - taskmgmtlaravel_network
+
+#Docker Networks
+networks:
+  taskmgmtlaravel_network:
+    driver: bridge
+
+#Volumes
+volumes:
+  taskmgmtlaravel_mysql_data:

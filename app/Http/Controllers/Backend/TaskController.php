@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreCommentRequest;
+use App\Http\Requests\StoreTaskRequest;
+use App\Http\Requests\UpdateTaskRequest;
 use App\Models\Task;
 use App\Models\User;
 use App\Mail\TaskAssigned;
@@ -30,7 +33,7 @@ class TaskController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreTaskRequest $request)
     {
         // Store the task
         $store = Task::create([
@@ -64,7 +67,7 @@ class TaskController extends Controller
         ]);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateTaskRequest $request, $id)
     {
         $task = Task::find($id);
 
@@ -121,7 +124,7 @@ class TaskController extends Controller
         ]);
     }
 
-    public function delete(Request $request, $id)
+    public function delete($id)
     {
         $task = Task::find($id);
         if (!$task) {
@@ -161,7 +164,7 @@ class TaskController extends Controller
         }
     }
 
-    public function comment(Request $request, $id)
+    public function comment(StoreCommentRequest $request, $id)
     {
         // Get the task
         $task = Task::find($id);

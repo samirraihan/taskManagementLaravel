@@ -18,9 +18,6 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('/signup', [AuthController::class, 'signup']);
     Route::get('/verify', [AuthController::class, 'verifyEmail'])->name('verification.verify');
     Route::post('/resendVerificationEmail', [AuthController::class, 'resendVerificationEmail']);
-    Route::post('/forgotPassword', [AuthController::class, 'forgotPassword']);
-    Route::get('/resetPassword', [AuthController::class, 'resetPassword'])->name('password.reset');
-    Route::post('/resetPasswordProcess', [AuthController::class, 'resetPasswordProcess']);
     Route::post('/logout', [AuthController::class, 'logout']);
 });
 
@@ -33,6 +30,7 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
             Route::post('/store', [TaskController::class, 'store']);
             Route::post('/{id}/update', [TaskController::class, 'update']);
             Route::post('/{id}/delete', [TaskController::class, 'delete']);
+            Route::post('/{id}/comment', [TaskController::class, 'comment']);
         });
     });
 });

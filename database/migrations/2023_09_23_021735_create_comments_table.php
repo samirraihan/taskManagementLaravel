@@ -11,12 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('task_user', function (Blueprint $table) {
+        Schema::create('comments', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('task_id');
             $table->unsignedBigInteger('user_id');
+            $table->text('body');
             $table->softDeletes();
             $table->timestamps();
+
+            // Define foreign key constraints
             $table->foreign('task_id')->references('id')->on('tasks')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
@@ -27,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('task_user');
+        Schema::dropIfExists('comments');
     }
 };

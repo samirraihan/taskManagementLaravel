@@ -6,24 +6,26 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Task extends Model
+class Comment extends Model
 {
     use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
-        'title',
-        'description',
+        'comment',
+        'task_id',
+        'user_id',
+        'body',
         'deleted_at'
     ];
 
-    public function users()
+    public function task()
     {
-        return $this->belongsToMany(User::class);
+        return $this->belongsTo(Task::class);
     }
-    
-    public function comments()
+
+    public function user()
     {
-        return $this->hasMany(Comment::class);
+        return $this->belongsTo(User::class);
     }
 }

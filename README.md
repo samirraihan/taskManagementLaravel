@@ -1,6 +1,6 @@
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
-Banking System
+Task Management System
 
 ## About Installation:
 This project is dockerized.
@@ -21,6 +21,7 @@ https://github.com/samirraihan/taskManagementLaravel.git
 9. php artisan migrate
 10. Run the project on http://localhost:8050/
 11. I have tested sending emails by using Mailtrap. So can test using Mailtrap.
+12. I have added PostMan Collection if needed to test. Root->postmanCollection
 
 DB details:
 

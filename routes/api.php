@@ -26,7 +26,7 @@ Route::prefix('v1')->group(function () {
     Route::group(['middleware' => ['auth:sanctum']], function () {
         Route::group(['prefix' => 'admin'], function () {
             Route::group(['prefix' => 'tasks'], function () {
-                Route::get('/', [TaskController::class, 'index']);
+                Route::get('/fetch', [TaskController::class, 'index']);
                 Route::get('/{id}/edit', [TaskController::class, 'edit']);
                 Route::post('/store', [TaskController::class, 'store']);
                 Route::post('/{id}/update', [TaskController::class, 'update']);

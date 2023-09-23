@@ -108,10 +108,10 @@ class AuthController extends Controller
 
         if ($user->markEmailAsVerified()) {
             $message = 'Email verified successfully.';
-            return redirect()->away(env('FRONTEND_URL') . '/auth')->with('success', $message);
+            return redirect()->away(env('FRONTEND_URL') . 'auth')->with('success', $message);
         } else {
             $message = 'Email verification failed.';
-            return redirect()->away(env('FRONTEND_URL') . '/auth/verify-email')->with('error', $message);
+            return redirect()->away(env('FRONTEND_URL') . 'auth/verify-email')->with('error', $message);
         }
     }
     

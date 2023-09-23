@@ -23,26 +23,39 @@ class TaskController extends Controller
 
     private $tableName = 'Tasks';
 
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = $request->input('perPage', 5);
         // Get all tasks
-        $getData = Task::all();
+        $getData = Task::with('comments')->paginate($perPage);
+        $users = User::all();
 
         return $this->success([
-            'getData' => $getData
+            'getData' => $getData,
+            'users' => $users
         ]);
     }
 
     public function store(StoreTaskRequest $request)
     {
+        $userID = auth()->user()->id;
+
         // Store the task
         $store = Task::create([
             'title' => $request->title,
             'description' => $request->description,
-            'created_by' => auth()->user()->id
+            'created_by' => $userID
         ]);
 
-        $store->users()->attach(auth()->user()->id);
+        // Attach the authenticated user and other selected users
+        $userIds = array_merge([$userID], $request->user_ids);
+        $store->users()->attach($userIds);
+
+        // Send email notifications to assigned users
+        $assignedUsers = User::whereIn('id', $userIds)->get();
+        foreach ($assignedUsers as $user) {
+            Mail::to($user->email)->send(new TaskAssigned($store));
+        }
 
         if ($store) {
             return $this->success([
@@ -60,7 +73,9 @@ class TaskController extends Controller
     public function edit($id)
     {
         // Get the task
-        $getData = Task::find($id);
+        $getData = Task::with(['users' => function ($query) {
+            $query->where('deleted_at', NULL);
+        }])->find($id);
 
         return $this->success([
             'getData' => $getData
@@ -75,16 +90,15 @@ class TaskController extends Controller
             return $this->error([
                 'status' => 'error',
                 'message' => 'Task not found'
-            ], 404);
+            ], 200);
         }
 
-        $taskCreator = User::find($task->created_by);
         $user = auth()->user();
-        if (!$task->users()->where('user_id', $user->id)->exists() || !$taskCreator->is($user)) {
+        if (!($user->id === $task->created_by || $task->users()->where('user_id', $user->id)->exists())) {
             return $this->error([
                 'status' => 'error',
                 'message' => 'You are not eligible to update this task'
-            ], 403); // Forbidden
+            ], 200); // Forbidden
         }
 
         // Update the task
@@ -93,34 +107,43 @@ class TaskController extends Controller
             'description' => $request->input('description')
         ]);
 
+        $gotUserIds = $request->input('user_ids', []);
         // Get the currently assigned users to the task
-        $currentlyAssignedUserIds = $task->users->pluck('id')->where('delete_at', NULL)->toArray();
+        $currentlyAssignedUserIds = $task->users->pluck('id')->toArray();
 
-        // Filter out user IDs that are already assigned
-        $newUserIds = array_diff($request->input('user_ids', []), $currentlyAssignedUserIds);
-        $alreadyAssignedUserIds = array_intersect($request->input('user_ids', []), $currentlyAssignedUserIds);
+        // Filter out user IDs to attach and detach
+        $newUserIds = array_diff($gotUserIds, $currentlyAssignedUserIds);
+        $deletedUserIds = array_diff($currentlyAssignedUserIds, $gotUserIds);
+        $reassignedUserIds = array_intersect($currentlyAssignedUserIds, $gotUserIds);
 
-        if ($newUserIds) {
-            // Attach the new users to the task
+        // Attach the new users to the task
+        if (!empty($newUserIds)) {
             $task->users()->attach($newUserIds);
 
-            if ($task->users()->count() > 0) {
-                $users = User::whereIn('id', $newUserIds)->get();
-                foreach ($users as $user) {
-                    // Send email to the user
-                    Mail::to($user->email)->send(new TaskAssigned($task));
-                }
+            $newlyAssignedUsers = User::whereIn('id', $newUserIds)->get();
+            foreach ($newlyAssignedUsers as $user) {
+                // Send email to the newly assigned user
+                Mail::to($user->email)->send(new TaskAssigned($task));
             }
         }
 
-        // Add softdelete to already assigned users from the task
-        $task->users()->updateExistingPivot($alreadyAssignedUserIds, [
-            'deleted_at' => now()
-        ]);
+        // Add soft delete to already assigned users
+        if (!empty($deletedUserIds)) {
+            $task->users()->updateExistingPivot($deletedUserIds, [
+                'deleted_at' => now()
+            ]);
+        }
+
+        // Remove soft delete from reassigned users
+        if (!empty($reassignedUserIds)) {
+            $task->users()->updateExistingPivot($reassignedUserIds, [
+                'deleted_at' => NULL
+            ]);
+        }
 
         return $this->success([
             'status' => 'success',
-            'message' => 'Users assigned successfully to the task'
+            'message' => 'Task updated successfully'
         ]);
     }
 
@@ -134,13 +157,12 @@ class TaskController extends Controller
             ], 404);
         }
 
-        $taskCreator = User::find($task->created_by);
         $user = auth()->user();
-        if (!$task->users()->where('user_id', $user->id)->exists() || !$taskCreator->is($user)) {
+        if (!($user->id === $task->created_by || $task->users()->where('user_id', $user->id)->exists())) {
             return $this->error([
                 'status' => 'error',
                 'message' => 'You are not eligible to delete this task'
-            ], 403); // Forbidden
+            ], 200); // Forbidden
         }
 
         // Delete the task
@@ -177,13 +199,12 @@ class TaskController extends Controller
         }
 
         // Check if the authenticated user is assigned to the task
-        $taskCreator = User::find($task->created_by);
         $user = auth()->user();
-        if (!$task->users()->where('user_id', $user->id)->exists() || !$taskCreator->is($user)) {
+        if (!($user->id === $task->created_by || $task->users()->where('user_id', $user->id)->exists())) {
             return $this->error([
                 'status' => 'error',
                 'message' => 'You are not eligible to comment on this task'
-            ], 403); // Forbidden
+            ], 200); // Forbidden
         }
 
         // Store the comment in comments table
@@ -194,14 +215,15 @@ class TaskController extends Controller
         ]);
 
         // send email to the task creator by task table created_by and task_user table assigned users
-        $assignedUsers = $task->users()->where('user_id', '!=', $task->created_by)->get();
-        $users = $assignedUsers->push($taskCreator);
-        foreach ($users as $user) {
-            // Send email to the user
-            Mail::to($user->email)->send(new TaskComment($task, $comment));
-        }
+        $assignedUsers = $task->users()->whereNull('task_user.deleted_at')->where('user_id', '!=', $task->created_by)->get();
+        $users = $assignedUsers->push($user);
 
         if ($comment) {
+            foreach ($users as $user) {
+                // Send email to the user
+                Mail::to($user->email)->send(new TaskComment($task, $comment));
+            }
+            
             return $this->success([
                 'status' => 'success',
                 'message' => 'Comment added successfully'

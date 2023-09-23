@@ -24,7 +24,6 @@ class StoreTaskRequest extends FormRequest
         return [
             'title' => 'required|string',
             'description' => 'required|string',
-            'created_by' => 'required|integer',
         ];
     }
 
@@ -35,8 +34,7 @@ class StoreTaskRequest extends FormRequest
     {
         return [
             'title.required' => 'Title is required',
-            'description.required' => 'Description is required',
-            'created_by.required' => 'Creator ID is required',
+            'description.required' => 'Description is required'
         ];
     }
 }
